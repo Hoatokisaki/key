@@ -1,4 +1,4 @@
 pyTelegramBotAPI
 requests
-pip install --upgrade pip
 flask
+
