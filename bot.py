@@ -1,15 +1,13 @@
-﻿import telebot
+import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import requests
 import random
 import string
 import time
-
-
-# --- THÊM ĐOẠN NÀY VÀO ĐẦU FILE ---
 from flask import Flask
 from threading import Thread
 
+# ================= CẤU HÌNH WEB SERVER (ĐỂ CHẠY 24/24) =================
 app = Flask('')
 
 @app.route('/')
@@ -17,15 +15,15 @@ def home():
     return "I am alive"
 
 def run():
+    # Chạy trên port 8080 để tương thích tốt với Render/Replit
     app.run(host='0.0.0.0', port=8080)
 
 def keep_alive():
     t = Thread(target=run)
     t.start()
-# ----------------------------------
 
-# ================= CẤU HÌNH =================
-API_TOKEN = '7833444319:AAHdrEdMtqM88zLpUlnyX7bWqoT8GVNnKm4'  # <--- Thay Token Bot của bạn vào đây
+# ================= CẤU HÌNH BOT =================
+API_TOKEN = '7833444319:AAHdrEdMtqM88zLpUlnyX7bWqoT8GVNnKm4'  # Token Bot
 bot = telebot.TeleBot(API_TOKEN)
 
 nhapma_token = "0975f449-c48b-46a0-bff0-c5cda2250fc7"
@@ -139,10 +137,8 @@ def handle_group_chat(message):
 def send_welcome(message):
     bot.reply_to(message, "Chào bạn! Hãy gõ 'key' hoặc 'getkey' để lấy Key nhé.")
 
-print("Bot đang chạy chế độ Group Chat (Privacy OFF)...")
-bot.infinity_polling()
-# --- SỬA ĐOẠN CUỐI CÙNG THÀNH ---
+# ================= CHẠY BOT =================
 if __name__ == '__main__':
-    keep_alive()  # Chạy web giả
+    keep_alive()  # <--- Bắt đầu chạy Web Server ảo
     print("Bot đang chạy...")
-    bot.infinity_polling() # Chạy bot
+    bot.infinity_polling() # <--- Bắt đầu chạy Bot Telegram
