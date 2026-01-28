@@ -12,51 +12,211 @@ from threading import Thread
 app = Flask('')
 
 # --- KHO CHỨA KEY (Lưu trong RAM) ---
-# Dạng: {'id_ngau_nhien': 'nội dung key'}
-key_database = {} 
+key_database = {}
 
-# Địa chỉ Render của bạn (Lấy từ ảnh bạn gửi)
+# Địa chỉ Render của bạn
 MY_DOMAIN = "https://key-klud.onrender.com"
 
 @app.route('/')
 def home():
     return "I am alive"
 
-# --- TRANG WEB HIỂN THỊ KEY ---
+# --- TRANG WEB HIỂN THỊ KEY (GIAO DIỆN MỚI ĐẸP HƠN) ---
 @app.route('/view/<key_id>')
 def view_key_page(key_id):
-    # Tìm key trong kho
     content = key_database.get(key_id)
-    
     if content:
-        # Giao diện hiển thị Key đẹp mắt
+        # HTML & CSS đã được nâng cấp
         return f"""
-        <html>
+        <!DOCTYPE html>
+        <html lang="vi">
         <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Nhận Key VIP</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
             <style>
-                body {{ background-color: #121212; color: white; font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }}
-                .card {{ background: #1e1e1e; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: center; max-width: 90%; width: 400px; }}
-                h2 {{ color: #00ff88; margin-top: 0; }}
-                .key-box {{ background: #333; padding: 15px; margin: 20px 0; border-radius: 8px; border: 1px dashed #555; font-family: monospace; font-size: 18px; word-break: break-all; color: #ffeb3b; }}
-                p {{ color: #aaa; font-size: 14px; }}
-                .footer {{ margin-top: 20px; font-size: 12px; color: #666; }}
+                :root {{
+                    --primary-color: #00ff88;
+                    --secondary-color: #00b8ff;
+                    --bg-color: #0a0a0a;
+                    --card-bg: #1a1a1a;
+                    --text-color: #e0e0e0;
+                }}
+                body {{
+                    font-family: 'Poppins', sans-serif;
+                    background-color: var(--bg-color);
+                    color: var(--text-color);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    min-height: 100vh;
+                    margin: 0;
+                    background-image: radial-gradient(circle at top right, rgba(0, 255, 136, 0.1), transparent),
+                                      radial-gradient(circle at bottom left, rgba(0, 184, 255, 0.1), transparent);
+                }}
+                .container {{
+                    perspective: 1000px;
+                }}
+                .card {{
+                    background: var(--card-bg);
+                    padding: 40px;
+                    border-radius: 20px;
+                    box-shadow: 0 15px 35px rgba(0,0,0,0.5), 0 0 20px rgba(0, 255, 136, 0.2);
+                    text-align: center;
+                    max-width: 90%;
+                    width: 420px;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    backdrop-filter: blur(10px);
+                    transform-style: preserve-3d;
+                    animation: cardEntrance 0.8s ease-out;
+                }}
+                @keyframes cardEntrance {{
+                    from {{ opacity: 0; transform: translateY(50px) rotateX(-10deg); }}
+                    to {{ opacity: 1; transform: translateY(0) rotateX(0); }}
+                }}
+                h2 {{
+                    font-weight: 700;
+                    margin-top: 0;
+                    background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    font-size: 28px;
+                    margin-bottom: 10px;
+                }}
+                .subtitle {{
+                    color: #aaa;
+                    font-size: 15px;
+                    margin-bottom: 25px;
+                }}
+                .key-container {{
+                    position: relative;
+                    margin: 30px 0;
+                }}
+                .key-box {{
+                    background: rgba(255, 255, 255, 0.05);
+                    padding: 20px;
+                    border-radius: 12px;
+                    border: 2px dashed var(--primary-color);
+                    font-family: 'Courier New', monospace;
+                    font-size: 22px;
+                    font-weight: 600;
+                    color: var(--primary-color);
+                    word-break: break-all;
+                    letter-spacing: 2px;
+                    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                }}
+                .key-box:hover {{
+                    background: rgba(0, 255, 136, 0.1);
+                    transform: scale(1.02);
+                }}
+                .copy-hint {{
+                    position: absolute;
+                    bottom: -25px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    font-size: 12px;
+                    color: var(--secondary-color);
+                    opacity: 0.8;
+                }}
+                .info-text {{
+                    color: #888;
+                    font-size: 14px;
+                    margin-top: 20px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                }}
+                .footer {{
+                    margin-top: 35px;
+                    font-size: 13px;
+                    color: #666;
+                    border-top: 1px solid rgba(255, 255, 255, 0.1);
+                    padding-top: 15px;
+                }}
+                /* Hiệu ứng khi click để copy */
+                .copied {{
+                    animation: pulse 0.5s;
+                    border-color: var(--secondary-color) !important;
+                    color: var(--secondary-color) !important;
+                }}
+                @keyframes pulse {{
+                    0% {{ transform: scale(1); }}
+                    50% {{ transform: scale(1.05); }}
+                    100% {{ transform: scale(1); }}
+                }}
             </style>
         </head>
         <body>
-            <div class="card">
-                <h2>✅ LẤY KEY THÀNH CÔNG</h2>
-                <p>Sao chép đoạn mã dưới đây:</p>
-                <div class="key-box">{content}</div>
-                <p>Key có hạn sử dụng 24h.</p>
-                <div class="footer">Powered by Snowie Panel</div>
+            <div class="container">
+                <div class="card">
+                    <h2>🎉 LẤY KEY THÀNH CÔNG!</h2>
+                    <p class="subtitle">Cảm ơn bạn đã vượt qua quảng cáo.</p>
+                    
+                    <div class="key-container">
+                        <div class="key-box" id="keyContent" onclick="copyKey()">{content}</div>
+                        <div class="copy-hint" id="copyHint">(Chạm để sao chép)</div>
+                    </div>
+                    
+                    <div class="info-text">
+                        ⏳ Key có hạn sử dụng 24 giờ.
+                    </div>
+                    
+                    <div class="footer">
+                        Developed with ❤️ by Snowie Panel
+                    </div>
+                </div>
             </div>
+
+            <script>
+                function copyKey() {{
+                    const keyText = document.getElementById('keyContent').innerText;
+                    navigator.clipboard.writeText(keyText).then(() => {{
+                        const keyBox = document.getElementById('keyContent');
+                        const copyHint = document.getElementById('copyHint');
+                        
+                        keyBox.classList.add('copied');
+                        copyHint.innerText = "✅ Đã sao chép!";
+                        copyHint.style.color = "#00ff88";
+                        
+                        setTimeout(() => {{
+                            keyBox.classList.remove('copied');
+                            copyHint.innerText = "(Chạm để sao chép)";
+                            copyHint.style.color = "#00b8ff";
+                        }}, 2000);
+                    }}).catch(err => {{
+                        console.error('Không thể sao chép: ', err);
+                    }});
+                }}
+            </script>
         </body>
         </html>
         """
     else:
-        return "<h1>❌ Key không tồn tại hoặc bot đã khởi động lại.</h1>"
+        # Giao diện lỗi cũng được làm đẹp
+        return """
+        <html>
+        <head>
+            <title>Lỗi</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600&display=swap" rel="stylesheet">
+            <style>
+                body { background-color: #0a0a0a; color: #ff4757; font-family: 'Poppins', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; text-align: center; }
+                h1 { font-size: 24px; }
+                p { color: #aaa; margin-top: 10px; }
+            </style>
+        </head>
+        <body>
+            <div>
+                <h1>❌ 404 - KEY KHÔNG TỒN TẠI</h1>
+                <p>Có thể link đã hết hạn hoặc bot đã khởi động lại.</p>
+            </div>
+        </body>
+        </html>
+        """
 
 def run():
     app.run(host='0.0.0.0', port=8080)
@@ -90,13 +250,8 @@ def add_key_to_server(key):
 # --- HÀM MỚI: TỰ TẠO LINK TRÊN SERVER CỦA MÌNH ---
 def create_self_hosted_link(key_content):
     try:
-        # 1. Tạo ID ngẫu nhiên cho link
-        link_id = str(uuid.uuid4())[:8] # Lấy 8 ký tự đầu cho ngắn
-        
-        # 2. Lưu nội dung vào RAM
+        link_id = str(uuid.uuid4())[:8]
         key_database[link_id] = key_content
-        
-        # 3. Trả về link của chính mình
         return f"{MY_DOMAIN}/view/{link_id}"
     except Exception as e:
         print(f"Lỗi tạo link nội bộ: {e}")
@@ -133,19 +288,15 @@ def handle_group_chat(message):
         key = generate_ldk_key()
         
         if add_key_to_server(key):
-            # --- DÙNG PHƯƠNG PHÁP TỰ LƯU TRỮ ---
-            # Link này sẽ là: https://key-klud.onrender.com/view/xxxx
             link_goc = create_self_hosted_link(key)
             
             if link_goc:
-                # Rút gọn link
                 link_level_1 = shorten_with_nhapma(link_goc)
                 input_lv2 = link_level_1 if link_level_1 else link_goc
                 link_level_2 = shorten_with_nhapma(input_lv2)
                 input_lv3 = link_level_2 if link_level_2 else input_lv2
                 final_link = shorten_with_nhapma(input_lv3)
                 
-                # Tạo nút bấm
                 markup = InlineKeyboardMarkup()
                 btn_link = InlineKeyboardButton("👉 BẤM VÀO ĐÂY ĐỂ LẤY KEY 👈", url=final_link)
                 markup.add(btn_link)
@@ -164,7 +315,6 @@ def handle_group_chat(message):
                     reply_markup=markup
                 )
             else:
-                # --- ĐÃ XÓA PHẦN HIỆN KEY THẲNG ---
                 bot.edit_message_text(chat_id=message.chat.id, message_id=msg.message_id, text="❌ Lỗi hệ thống: Không thể tạo link. Vui lòng thử lại sau.")
         else:
             bot.edit_message_text(chat_id=message.chat.id, message_id=msg.message_id, text="❌ Lỗi kết nối Google Sheet.")
