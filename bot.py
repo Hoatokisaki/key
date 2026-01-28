@@ -7,7 +7,7 @@ import time
 from flask import Flask
 from threading import Thread
 
-# ================= CẤU HÌNH WEB SERVER (GIỮ BOT ONLINE 24/24) =================
+# ================= CẤU HÌNH WEB SERVER (GIỮ BOT 24/24) =================
 app = Flask('')
 
 @app.route('/')
@@ -15,7 +15,6 @@ def home():
     return "I am alive"
 
 def run():
-    # Chạy port 8080 cho Render
     app.run(host='0.0.0.0', port=8080)
 
 def keep_alive():
@@ -44,32 +43,32 @@ def add_key_to_server(key):
     except:
         return False
 
-# --- HÀM UPLOAD MỚI (CHẠY 2 SERVER DỰ PHÒNG) ---
-def upload_to_note_vip(content_text):
-    # CÁCH 1: Thử Dpaste (Đã sửa tham số expires=86400 giây = 1 ngày)
+# --- HÀM UPLOAD MỚI (Pastes.io + 0x0.st) ---
+def upload_to_storage(content_text):
+    # ƯU TIÊN 1: Pastes.io (Rất ổn định)
     try:
-        url = "https://dpaste.org/api/"
-        payload = {
-            "content": content_text,
-            "lexer": "text",
-            "format": "url",
-            "expires": "86400"  # Sửa lỗi: dùng giây thay vì ngày
-        }
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        response = requests.post(url, data=payload, headers=headers, timeout=5)
+        url = "https://pastes.io/api/create"
+        # expire: 1440 phút = 24 giờ
+        payload = {"text": content_text, "expire": "1440"} 
+        response = requests.post(url, data=payload, timeout=10)
+        
         if response.status_code == 200:
-            return response.text.strip()
+            # Kết quả trả về JSON
+            data = response.json()
+            if data.get("status") == "success":
+                return data.get("link")
     except Exception as e:
-        print(f"Dpaste lỗi: {e}")
+        print(f"Pastes.io lỗi: {e}")
 
-    # CÁCH 2: Dự phòng bằng Ix.io (Nếu Dpaste lỗi thì chạy cái này)
+    # ƯU TIÊN 2: 0x0.st (Backup cực mạnh, upload dạng file text)
     try:
-        payload = {'f:1': content_text}
-        response = requests.post("http://ix.io", data=payload, timeout=5)
+        # Giả lập gửi file txt lên server
+        files = {'file': ('key_vip.txt', content_text)}
+        response = requests.post("https://0x0.st", files=files, timeout=10)
         if response.status_code == 200:
             return response.text.strip()
     except Exception as e:
-        print(f"Ix.io lỗi: {e}")
+        print(f"0x0.st lỗi: {e}")
 
     return None
 # -----------------------------------------------
@@ -106,11 +105,11 @@ def handle_group_chat(message):
         
         # 2. Thêm vào Server
         if add_key_to_server(key):
-            # 3. Up lên Note (Dùng hàm mới upload_to_note_vip)
+            # 3. Up lên Storage (Dùng hàm mới upload_to_storage)
             content = f"KEY CỦA BẠN LÀ:\n\n{key}\n\nKey VIP Free Fire PC - Hạn 24h."
             
-            # --- GỌI HÀM MỚI Ở ĐÂY ---
-            link_goc = upload_to_note_vip(content)
+            # --- GỌI HÀM MỚI ---
+            link_goc = upload_to_storage(content)
             
             if link_goc:
                 # 4. Chồng Link 3 tầng
@@ -152,6 +151,6 @@ def send_welcome(message):
 
 # ================= CHẠY BOT =================
 if __name__ == '__main__':
-    keep_alive()  # Chạy web server
+    keep_alive()  # Chạy server
     print("Bot đang chạy...")
     bot.infinity_polling() # Chạy bot
