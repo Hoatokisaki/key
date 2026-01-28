@@ -15,7 +15,7 @@ def home():
     return "I am alive"
 
 def run():
-    # Chạy trên port 8080 để tương thích tốt với Render/Replit
+    # Chạy trên port 8080 để tương thích tốt với Render
     app.run(host='0.0.0.0', port=8080)
 
 def keep_alive():
@@ -23,14 +23,14 @@ def keep_alive():
     t.start()
 
 # ================= CẤU HÌNH BOT =================
-API_TOKEN = '7833444319:AAHdrEdMtqM88zLpUlnyX7bWqoT8GVNnKm4'  # Token Bot
+API_TOKEN = '7833444319:AAHdrEdMtqM88zLpUlnyX7bWqoT8GVNnKm4'
 bot = telebot.TeleBot(API_TOKEN)
 
 nhapma_token = "0975f449-c48b-46a0-bff0-c5cda2250fc7"
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzgiR_3qqjjzv4QObfLjKjiAITk8Dlwyzbyv0S-aRJoeZVCQqnUGx_zegmx_0TzgP2Hzg/exec"
 ADMIN_PASS = "admin_vip_proledinhkiet"
 
-# ================= CÁC HÀM XỬ LÝ (GIỮ NGUYÊN) =================
+# ================= CÁC HÀM XỬ LÝ =================
 def generate_ldk_key():
     prefix = "LDKNCH"
     random_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=14))
@@ -44,16 +44,26 @@ def add_key_to_server(key):
     except:
         return False
 
-def upload_to_notems(content_text):
+# --- ĐÃ SỬA: Dùng Dpaste thay vì Note.ms ---
+def upload_to_dpaste(content_text):
     try:
-        path_name = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
-        url = f"https://note.ms/{path_name}"
-        payload = {"t": content_text}
-        headers = {"User-Agent": "Mozilla/5.0"}
-        requests.post(url, data=payload, headers=headers, timeout=5)
-        return url
-    except:
+        url = "https://dpaste.org/api/"
+        payload = {
+            "content": content_text,
+            "expiry_days": 1,  # Key sẽ tự hủy sau 1 ngày (bảo mật)
+            "syntax": "text"
+        }
+        # Gửi yêu cầu tạo note
+        response = requests.post(url, data=payload, timeout=10)
+        
+        # Nếu thành công, trả về link (ví dụ: https://dpaste.org/ABCD)
+        if response.status_code == 200 or response.status_code == 201:
+            return response.text.strip() 
         return None
+    except Exception as e:
+        print(f"Lỗi Dpaste: {e}")
+        return None
+# -------------------------------------------
 
 def shorten_with_nhapma(long_url):
     try:
@@ -68,24 +78,17 @@ def shorten_with_nhapma(long_url):
 
 # ================= XỬ LÝ TIN NHẮN TRONG NHÓM =================
 
-# Hàm kiểm tra xem tin nhắn có chứa từ khóa muốn bắt không
 def check_keywords(message):
     if message.text is None: return False
-    text = message.text.lower() # Chuyển về chữ thường để so sánh
-    
-    # Danh sách các từ khóa sẽ kích hoạt Bot
+    text = message.text.lower()
     keywords = ["key", "getkey", "lấy key", "xin key", "mua key", "bot ơi"]
-    
-    # Nếu tin nhắn chứa 1 trong các từ trên -> True
     for kw in keywords:
         if kw in text:
             return True
     return False
 
-# Bắt tin nhắn dựa trên từ khóa (Không cần dấu /)
 @bot.message_handler(func=check_keywords)
 def handle_group_chat(message):
-    # Trả lời lại đúng tin nhắn của người hỏi (Reply)
     msg = bot.reply_to(message, "⏳ <b>Đang khởi tạo Key VIP cho bạn...</b>", parse_mode="HTML")
     
     try:
@@ -94,9 +97,11 @@ def handle_group_chat(message):
         
         # 2. Thêm vào Server
         if add_key_to_server(key):
-            # 3. Up lên Note.ms
+            # 3. Up lên Dpaste (Thay cho Note.ms)
             content = f"KEY CỦA BẠN LÀ:\n\n{key}\n\nKey VIP Free Fire PC - Hạn 24h."
-            link_goc = upload_to_notems(content)
+            
+            # --- GỌI HÀM MỚI Ở ĐÂY ---
+            link_goc = upload_to_dpaste(content)
             
             if link_goc:
                 # 4. Chồng Link 3 tầng
@@ -125,20 +130,19 @@ def handle_group_chat(message):
                     reply_markup=markup
                 )
             else:
-                bot.edit_message_text(chat_id=message.chat.id, message_id=msg.message_id, text="❌ Lỗi tạo Note.")
+                bot.edit_message_text(chat_id=message.chat.id, message_id=msg.message_id, text="❌ Lỗi tạo Note (Dpaste).")
         else:
             bot.edit_message_text(chat_id=message.chat.id, message_id=msg.message_id, text="❌ Lỗi kết nối Server.")
             
     except Exception as e:
         bot.edit_message_text(chat_id=message.chat.id, message_id=msg.message_id, text=f"❌ Lỗi: {str(e)}")
 
-# Vẫn giữ lệnh /start cho ai chat riêng
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     bot.reply_to(message, "Chào bạn! Hãy gõ 'key' hoặc 'getkey' để lấy Key nhé.")
 
 # ================= CHẠY BOT =================
 if __name__ == '__main__':
-    keep_alive()  # <--- Bắt đầu chạy Web Server ảo
+    keep_alive()  # Chạy web server
     print("Bot đang chạy...")
-    bot.infinity_polling() # <--- Bắt đầu chạy Bot Telegram
+    bot.infinity_polling() # Chạy bot
