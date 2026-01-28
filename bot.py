@@ -4,15 +4,59 @@ import requests
 import random
 import string
 import time
+import uuid
 from flask import Flask
 from threading import Thread
 
-# ================= CẤU HÌNH WEB SERVER =================
+# ================= CẤU HÌNH SERVER TỰ LƯU TRỮ (SELF-HOST) =================
 app = Flask('')
+
+# --- KHO CHỨA KEY (Lưu trong RAM) ---
+# Dạng: {'id_ngau_nhien': 'nội dung key'}
+key_database = {} 
+
+# Địa chỉ Render của bạn (Lấy từ ảnh bạn gửi)
+MY_DOMAIN = "https://key-klud.onrender.com"
 
 @app.route('/')
 def home():
     return "I am alive"
+
+# --- TRANG WEB HIỂN THỊ KEY ---
+@app.route('/view/<key_id>')
+def view_key_page(key_id):
+    # Tìm key trong kho
+    content = key_database.get(key_id)
+    
+    if content:
+        # Giao diện hiển thị Key đẹp mắt
+        return f"""
+        <html>
+        <head>
+            <title>Nhận Key VIP</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+                body {{ background-color: #121212; color: white; font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }}
+                .card {{ background: #1e1e1e; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: center; max-width: 90%; width: 400px; }}
+                h2 {{ color: #00ff88; margin-top: 0; }}
+                .key-box {{ background: #333; padding: 15px; margin: 20px 0; border-radius: 8px; border: 1px dashed #555; font-family: monospace; font-size: 18px; word-break: break-all; color: #ffeb3b; }}
+                p {{ color: #aaa; font-size: 14px; }}
+                .footer {{ margin-top: 20px; font-size: 12px; color: #666; }}
+            </style>
+        </head>
+        <body>
+            <div class="card">
+                <h2>✅ LẤY KEY THÀNH CÔNG</h2>
+                <p>Sao chép đoạn mã dưới đây:</p>
+                <div class="key-box">{content}</div>
+                <p>Key có hạn sử dụng 24h.</p>
+                <div class="footer">Powered by Snowie Panel</div>
+            </div>
+        </body>
+        </html>
+        """
+    else:
+        return "<h1>❌ Key không tồn tại hoặc bot đã khởi động lại.</h1>"
 
 def run():
     app.run(host='0.0.0.0', port=8080)
@@ -43,34 +87,23 @@ def add_key_to_server(key):
     except:
         return False
 
-# --- HÀM MỚI: DÙNG LITTERBOX (CỰC KỲ ỔN ĐỊNH) ---
-def upload_to_litterbox(content_text):
-    # Cách hoạt động: Tạo 1 file txt ảo và up lên server chứa file
+# --- HÀM MỚI: TỰ TẠO LINK TRÊN SERVER CỦA MÌNH ---
+def create_self_hosted_link(key_content):
     try:
-        url = "https://litterbox.catbox.moe/resources/internals/api.php"
-        # reqtype: fileupload, time: 12h (tồn tại 12 tiếng)
-        data = {'reqtype': 'fileupload', 'time': '12h'} 
-        # Tạo file ảo tên là key_vip.txt
-        files = {'fileToUpload': ('key_vip.txt', content_text)}
+        # 1. Tạo ID ngẫu nhiên cho link
+        link_id = str(uuid.uuid4())[:8] # Lấy 8 ký tự đầu cho ngắn
         
-        response = requests.post(url, data=data, files=files, timeout=15)
+        # 2. Lưu nội dung vào RAM
+        key_database[link_id] = key_content
         
-        # Kiểm tra kỹ xem kết quả có phải là Link không (bắt buộc phải có http)
-        if response.status_code == 200 and response.text.startswith("http"):
-            return response.text.strip()
-            
+        # 3. Trả về link của chính mình
+        return f"{MY_DOMAIN}/view/{link_id}"
     except Exception as e:
-        print(f"Litterbox lỗi: {e}")
-
-    # BACKUP: Nếu Litterbox lỗi, trả về None để xử lý sau (tránh crash bot)
-    return None
+        print(f"Lỗi tạo link nội bộ: {e}")
+        return None
 # -----------------------------------------------
 
 def shorten_with_nhapma(long_url):
-    # Nếu không có link (None) hoặc link lỗi thì trả về None
-    if not long_url or not long_url.startswith("http"):
-        return None
-        
     try:
         api_url = f"https://service.nhapma.com/api?token={nhapma_token}&url={long_url}"
         response = requests.get(api_url, timeout=10)
@@ -100,22 +133,19 @@ def handle_group_chat(message):
         key = generate_ldk_key()
         
         if add_key_to_server(key):
-            content = f"KEY CỦA BẠN LÀ:\n\n{key}\n\nKey VIP Free Fire PC - Hạn 12h."
+            # --- DÙNG PHƯƠNG PHÁP TỰ LƯU TRỮ ---
+            # Link này sẽ là: https://key-klud.onrender.com/view/xxxx
+            link_goc = create_self_hosted_link(key)
             
-            # 1. Upload lên Litterbox
-            link_goc = upload_to_litterbox(content)
-            
-            # 2. Kiểm tra nếu có link thì mới rút gọn
             if link_goc:
+                # Rút gọn link
                 link_level_1 = shorten_with_nhapma(link_goc)
                 input_lv2 = link_level_1 if link_level_1 else link_goc
                 link_level_2 = shorten_with_nhapma(input_lv2)
                 input_lv3 = link_level_2 if link_level_2 else input_lv2
                 final_link = shorten_with_nhapma(input_lv3)
                 
-                # Nếu rút gọn lỗi, dùng link gốc
-                if not final_link: final_link = link_goc
-
+                # Tạo nút bấm
                 markup = InlineKeyboardMarkup()
                 btn_link = InlineKeyboardButton("👉 BẤM VÀO ĐÂY ĐỂ LẤY KEY 👈", url=final_link)
                 markup.add(btn_link)
@@ -134,20 +164,14 @@ def handle_group_chat(message):
                     reply_markup=markup
                 )
             else:
-                # TRƯỜNG HỢP KHẨN CẤP: Nếu không up được link nào, gửi luôn Key cho khách đỡ chửi
-                bot.edit_message_text(
-                    chat_id=message.chat.id, 
-                    message_id=msg.message_id, 
-                    text=f"❌ Lỗi Server Link. Key tạm thời của bạn là: <code>{key}</code>",
-                    parse_mode="HTML"
-                )
+                # --- ĐÃ XÓA PHẦN HIỆN KEY THẲNG ---
+                bot.edit_message_text(chat_id=message.chat.id, message_id=msg.message_id, text="❌ Lỗi hệ thống: Không thể tạo link. Vui lòng thử lại sau.")
         else:
             bot.edit_message_text(chat_id=message.chat.id, message_id=msg.message_id, text="❌ Lỗi kết nối Google Sheet.")
             
     except Exception as e:
-        # In lỗi ra console server để mình biết đường sửa
-        print(f"Lỗi Bot: {e}")
-        bot.edit_message_text(chat_id=message.chat.id, message_id=msg.message_id, text="❌ Lỗi hệ thống, vui lòng thử lại sau.")
+        print(f"Lỗi: {e}")
+        bot.edit_message_text(chat_id=message.chat.id, message_id=msg.message_id, text="❌ Lỗi Bot. Vui lòng báo Admin.")
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
