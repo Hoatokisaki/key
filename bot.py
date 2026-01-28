@@ -7,7 +7,7 @@ import time
 from flask import Flask
 from threading import Thread
 
-# ================= CẤU HÌNH WEB SERVER (ĐỂ CHẠY 24/24) =================
+# ================= CẤU HÌNH WEB SERVER (GIỮ BOT ONLINE 24/24) =================
 app = Flask('')
 
 @app.route('/')
@@ -15,7 +15,7 @@ def home():
     return "I am alive"
 
 def run():
-    # Chạy trên port 8080 để tương thích tốt với Render
+    # Chạy port 8080 cho Render
     app.run(host='0.0.0.0', port=8080)
 
 def keep_alive():
@@ -44,26 +44,35 @@ def add_key_to_server(key):
     except:
         return False
 
-# --- ĐÃ SỬA: Dùng Dpaste thay vì Note.ms ---
-def upload_to_dpaste(content_text):
+# --- HÀM UPLOAD MỚI (CHẠY 2 SERVER DỰ PHÒNG) ---
+def upload_to_note_vip(content_text):
+    # CÁCH 1: Thử Dpaste (Đã sửa tham số expires=86400 giây = 1 ngày)
     try:
         url = "https://dpaste.org/api/"
         payload = {
             "content": content_text,
-            "expiry_days": 1,  # Key sẽ tự hủy sau 1 ngày (bảo mật)
-            "syntax": "text"
+            "lexer": "text",
+            "format": "url",
+            "expires": "86400"  # Sửa lỗi: dùng giây thay vì ngày
         }
-        # Gửi yêu cầu tạo note
-        response = requests.post(url, data=payload, timeout=10)
-        
-        # Nếu thành công, trả về link (ví dụ: https://dpaste.org/ABCD)
-        if response.status_code == 200 or response.status_code == 201:
-            return response.text.strip() 
-        return None
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.post(url, data=payload, headers=headers, timeout=5)
+        if response.status_code == 200:
+            return response.text.strip()
     except Exception as e:
-        print(f"Lỗi Dpaste: {e}")
-        return None
-# -------------------------------------------
+        print(f"Dpaste lỗi: {e}")
+
+    # CÁCH 2: Dự phòng bằng Ix.io (Nếu Dpaste lỗi thì chạy cái này)
+    try:
+        payload = {'f:1': content_text}
+        response = requests.post("http://ix.io", data=payload, timeout=5)
+        if response.status_code == 200:
+            return response.text.strip()
+    except Exception as e:
+        print(f"Ix.io lỗi: {e}")
+
+    return None
+# -----------------------------------------------
 
 def shorten_with_nhapma(long_url):
     try:
@@ -97,11 +106,11 @@ def handle_group_chat(message):
         
         # 2. Thêm vào Server
         if add_key_to_server(key):
-            # 3. Up lên Dpaste (Thay cho Note.ms)
+            # 3. Up lên Note (Dùng hàm mới upload_to_note_vip)
             content = f"KEY CỦA BẠN LÀ:\n\n{key}\n\nKey VIP Free Fire PC - Hạn 24h."
             
             # --- GỌI HÀM MỚI Ở ĐÂY ---
-            link_goc = upload_to_dpaste(content)
+            link_goc = upload_to_note_vip(content)
             
             if link_goc:
                 # 4. Chồng Link 3 tầng
@@ -130,7 +139,7 @@ def handle_group_chat(message):
                     reply_markup=markup
                 )
             else:
-                bot.edit_message_text(chat_id=message.chat.id, message_id=msg.message_id, text="❌ Lỗi tạo Note (Dpaste).")
+                bot.edit_message_text(chat_id=message.chat.id, message_id=msg.message_id, text="❌ Lỗi tạo Note (Server quá tải).")
         else:
             bot.edit_message_text(chat_id=message.chat.id, message_id=msg.message_id, text="❌ Lỗi kết nối Server.")
             
